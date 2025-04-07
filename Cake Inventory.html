@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cake Inventory Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.css">
+    <style>
+        /* Custom Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Light gray background */
+        }
+        /* Style for number input fields to hide arrows */
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield; /* Firefox */
+            appearance: textfield;
+        }
+        /* Table styling */
+        th, td {
+            padding: 10px 12px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #f1f5f9;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #4b5563; /* Gray-600 */
+        }
+        tr:hover:not(.category-header) {
+            background-color: #f8fafc;
+        }
+        /* Input field styling within table */
+        td input[type=number] {
+            width: 55px;
+            padding: 5px 7px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            text-align: center;
+            transition: border-color 0.2s ease-in-out;
+            font-size: 0.875rem;
+        }
+        td input[type=number]:focus {
+            outline: none;
+            border-color: #f472b6; /* Pink-400 */
+            box-shadow: 0 0 0 2px rgba(244, 114, 182, 0.2);
+        }
+        /* Category Header Row Style */
+        .category-header th {
+            background-color: #e0f2fe; /* Sky-100 */
+            color: #0c4a6e; /* Sky-800 */
+            font-weight: bold;
+            text-align: left;
+            padding-left: 15px;
+            font-size: 1rem;
+            border-top: 2px solid #bae6fd; /* Sky-200 */
+            border-bottom: 1px solid #bae6fd;
+        }
+        /* Need Stock Quantity Style */
+        .need-stock-qty {
+             min-width: 40px;
+             display: inline-block;
+        }
+
+        /* Styles for hiding Max Qty column */
+        .hide-max-qty th:nth-child(4), /* Target 4th header */
+        .hide-max-qty td:nth-child(4) { /* Target 4th cell in data rows */
+            display: none;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5); /* Dim background */
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            margin: auto;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        /* Lucide Icon style */
+        .lucide {
+          font-family: 'LucideIcons';
+          font-style: normal;
+          font-weight: normal;
+          font-variant: normal;
+          text-transform: none;
+          line-height: 1;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          display: inline-block;
+          vertical-align: middle;
+        }
+        /* Simple notification style */
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #22c55e; /* Green-500 */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: none; /* Hidden by default */
+            z-index: 1100;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+         #notification.error {
+             background-color: #ef4444; /* Red-500 for errors */
+         }
+        #notification.show {
+            display: block;
+            opacity: 1;
+        }
+        /* Button container styling */
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem; /* Space between buttons */
+            margin-top: 1.5rem; /* mt-6 */
+            flex-wrap: wrap; /* Allow buttons to wrap on small screens */
+        }
+
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-6 lg:p-8 max-w-6xl">
+
+        <header class="mb-6 md:mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">
+                <i class="lucide mr-2 text-pink-500" style="font-size: 1em;">cake</i> Cake Inventory Manager
+            </h1>
+            <p class="text-gray-500 mt-1">Manage your cake stock across branches</p>
+        </header>
+
+        <div class="bg-white p-4 md:p-6 rounded-lg shadow-md mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div class="flex-grow">
+                    <label for="branchSelect" class="block text-sm font-medium text-gray-700 mb-1">Select Branch</label>
+                    <select id="branchSelect" name="branchSelect" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
+                        <option value="">-- Select --</option>
+                    </select>
+                </div>
+                <div class="flex-grow sm:flex-grow-0 flex items-end gap-2">
+                    <div class="flex-grow">
+                         <label for="newBranchName" class="block text-sm font-medium text-gray-700 mb-1">Add New Branch</label>
+                         <input type="text" id="newBranchName" placeholder="New branch name" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
+                    </div>
+                    <button id="addBranchBtn" class="bg-pink-500 hover:bg-pink-600 text-white font-medium py-2 px-4 rounded-md shadow-sm transition duration-150 ease-in-out h-[42px] flex-shrink-0">
+                        <i class="lucide">plus</i> <span class="hidden sm:inline ml-1">Add</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="inventorySection" class="bg-white rounded-lg shadow-md overflow-hidden">
+             <div class="flex justify-between items-center px-4 py-3 md:px-6 md:py-3 border-b border-gray-200">
+                 <h2 id="inventoryTitle" class="text-xl font-semibold text-gray-700">Inventory: Select a branch</h2>
+                 <button id="toggleMaxQtyBtn" class="text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-3 rounded-md transition duration-150 ease-in-out">
+                     <i class="lucide mr-1" style="font-size: 0.9em;">eye</i> <span id="toggleMaxQtyBtnText">Hide Max Qty</span>
+                 </button>
+             </div>
+
+             <div class="overflow-x-auto">
+                <table id="inventoryTable" class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th scope="col" class="text-left pl-4">Flavor</th>
+                            <th scope="col">Available Stock</th>
+                            <th scope="col">Need Stock</th>
+                            <th scope="col" class="pr-4">Max Qty</th> </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody" class="bg-white divide-y divide-gray-200">
+                        <tr><td colspan="4" class="text-center text-gray-500 py-6">Please select a branch to view inventory.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button id="clearDataBtn" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-5 rounded-md shadow-sm transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5" disabled>
+                <i class="lucide">trash-2</i> Clear Available Stock
+            </button>
+            <button id="shareWhatsAppBtn" class="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-5 rounded-md shadow-sm transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5" disabled>
+                <i class="lucide">share-2</i> Share Need Stock
+            </button>
+        </div>
+
+    </div>
+
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content text-center">
+            <h3 class="text-lg font-semibold mb-3 text-gray-800">Confirm Action</h3>
+            <p id="modalMessage" class="text-gray-600 mb-5">Are you sure?</p>
+            <div class="flex justify-center gap-4">
+                <button id="cancelBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-5 rounded-md transition duration-150 ease-in-out">
+                    Cancel
+                </button>
+                <button id="confirmBtn" class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-5 rounded-md transition duration-150 ease-in-out">
+                    Confirm Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification"></div>
+
+    <script>
+        // --- Constants and Initial Data (Categorized) ---
+        const categorizedFlavors = {
+            'S1 Cakes': ['Black Forest', 'Pineapple', 'Strawberry', 'Vanilla'],
+            'S2 Cakes': [
+                'German Forest', 'Choco Crunchy', 'Choco Vanilla', 'Mix Fruit', 'White Forest',
+                'Choco Velvet', 'Mango', 'Butterscotch', 'Hazelnut', 'Choco Chips', 'Choco Delight'
+            ],
+            'S3 Cakes': [
+                'Choco Moca', 'Thandai', 'Red Velvet', 'Blueberry', 'Choco Con', 'Dutch Truffle',
+                'Choco Fantasy', 'Cherry Chocolate', 'Choco Magic', 'Choco Oreo',
+                'Choco Delight Heart', 'RasMalai'
+            ],
+            'S4 Cakes': [
+                'Belgium Choco', 'Red Velvet Heart', 'Kesar Pista', 'Choco Exclusive',
+                'Choco Exotic', 'Italian Choco', 'Cappuccino', 'Choco Forest', 'Mix Fruit Basket',
+                'Choco KitKat', 'Choco Truffle Heart', 'Blueberry Premium', 'Golden Dutch',
+                'All Rounder'
+            ]
+        };
+        const categories = Object.keys(categorizedFlavors);
+
+        // --- DOM Elements ---
+        const branchSelect = document.getElementById('branchSelect');
+        const newBranchNameInput = document.getElementById('newBranchName');
+        const addBranchBtn = document.getElementById('addBranchBtn');
+        const inventoryTableBodyEl = document.getElementById('inventoryTableBody');
+        const inventoryTitle = document.getElementById('inventoryTitle');
+        const inventoryTable = document.getElementById('inventoryTable');
+        const toggleMaxQtyBtn = document.getElementById('toggleMaxQtyBtn');
+        const toggleMaxQtyBtnText = document.getElementById('toggleMaxQtyBtnText');
+        const clearDataBtn = document.getElementById('clearDataBtn');
+        const shareWhatsAppBtn = document.getElementById('shareWhatsAppBtn'); // WhatsApp Button
+        const confirmationModal = document.getElementById('confirmationModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const notification = document.getElementById('notification');
+
+
+        // --- Application State ---
+        let branches = [];
+        let inventories = {};
+        let selectedBranch = null;
+        let isMaxQtyVisible = true; // Default state
+
+        // --- Utility Functions ---
+        function showNotification(message, isError = false) {
+            notification.textContent = message;
+            notification.classList.remove('error'); // Remove error class first
+            if (isError) {
+                notification.classList.add('error');
+            }
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // --- Update Max Qty Column Visibility ---
+        function updateMaxQtyVisibility(visible) {
+            isMaxQtyVisible = visible;
+            const iconElement = toggleMaxQtyBtn.querySelector('.lucide');
+            if (visible) {
+                inventoryTable.classList.remove('hide-max-qty');
+                toggleMaxQtyBtnText.textContent = 'Hide Max Qty';
+                if (iconElement) iconElement.innerHTML = 'eye-off'; // Use innerHTML for font icons
+            } else {
+                inventoryTable.classList.add('hide-max-qty');
+                toggleMaxQtyBtnText.textContent = 'Show Max Qty';
+                 if (iconElement) iconElement.innerHTML = 'eye'; // Use innerHTML for font icons
+            }
+            localStorage.setItem('cakeInventoryMaxQtyVisible', isMaxQtyVisible);
+        }
+
+
+        // --- Data Persistence (localStorage) ---
+        function saveData() {
+            try {
+                localStorage.setItem('cakeInventoryBranches', JSON.stringify(branches));
+                localStorage.setItem('cakeInventoryData', JSON.stringify(inventories));
+                console.log("Data saved.");
+            } catch (e) {
+                console.error("Error saving data:", e);
+                showNotification("Error saving data.", true);
+            }
+        }
+
+        function loadData() {
+            try {
+                // Load branches and inventory data
+                const storedBranches = localStorage.getItem('cakeInventoryBranches');
+                const storedInventories = localStorage.getItem('cakeInventoryData');
+                branches = storedBranches ? JSON.parse(storedBranches) : [];
+                inventories = storedInventories ? JSON.parse(storedInventories) : {};
+
+                // Data Validation/Migration
+                const allCategorizedFlavors = [];
+                 categories.forEach(category => {
+                    categorizedFlavors[category].forEach(flavor => {
+                        allCategorizedFlavors.push({ flavor, category });
+                    });
+                });
+                branches.forEach(branch => {
+                    if (!inventories[branch] || !Array.isArray(inventories[branch])) {
+                        inventories[branch] = [];
+                    }
+                    const branchInventory = inventories[branch];
+                    const existingFlavorMap = new Map(branchInventory.map(item => [item.flavor, item]));
+                    const updatedInventory = [];
+                    allCategorizedFlavors.forEach(({ flavor, category }) => {
+                        const existingItem = existingFlavorMap.get(flavor);
+                        if (existingItem) {
+                            existingItem.category = category;
+                            updatedInventory.push(existingItem);
+                        } else {
+                            updatedInventory.push({ flavor, category, currentQuantity: null, maxQuantity: null });
+                        }
+                    });
+                    const masterFlavorSet = new Set(allCategorizedFlavors.map(f => f.flavor));
+                    inventories[branch] = updatedInventory.filter(item => masterFlavorSet.has(item.flavor));
+                });
+
+                if (branches.length === 0) {
+                    addBranch('Default Branch', false);
+                }
+                if (!selectedBranch && branches.length > 0) {
+                    selectedBranch = branches[0];
+                }
+
+                // Load Max Qty visibility preference
+                const storedVisibility = localStorage.getItem('cakeInventoryMaxQtyVisible');
+                isMaxQtyVisible = storedVisibility === 'false' ? false : true;
+                updateMaxQtyVisibility(isMaxQtyVisible); // Apply loaded state
+
+
+            } catch (e) {
+                console.error("Error loading data:", e);
+                showNotification("Error loading data.", true);
+                branches = []; inventories = {};
+                addBranch('Default Branch', false);
+                if (branches.length > 0) selectedBranch = branches[0];
+                isMaxQtyVisible = true;
+                updateMaxQtyVisibility(isMaxQtyVisible);
+            }
+
+            renderBranchDropdown();
+            renderInventoryTable();
+            updateActionButtonsState(); // Update both buttons
+        }
+
+
+        // --- Rendering Functions ---
+         function renderBranchDropdown() {
+            branchSelect.innerHTML = '<option value="">-- Select --</option>';
+            branches.forEach(branch => {
+                const option = document.createElement('option');
+                option.value = branch;
+                option.textContent = branch;
+                if (branch === selectedBranch) {
+                    option.selected = true;
+                }
+                branchSelect.appendChild(option);
+            });
+        }
+
+        function renderInventoryTable() {
+            inventoryTableBodyEl.innerHTML = ''; // Clear previous rows
+
+            if (!selectedBranch || !inventories[selectedBranch]) {
+                inventoryTitle.textContent = 'Inventory: Select a branch';
+                inventoryTableBodyEl.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 py-6">Please select a branch to view inventory.</td></tr>';
+                updateActionButtonsState(); // Update buttons state
+                toggleMaxQtyBtn.disabled = true; // Disable toggle if no table
+                return;
+            }
+
+            inventoryTitle.textContent = `Inventory: ${selectedBranch}`;
+            toggleMaxQtyBtn.disabled = false; // Enable toggle button
+            const currentInventory = inventories[selectedBranch];
+
+            if (currentInventory.length === 0) {
+                 inventoryTableBodyEl.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 py-6">No items in this branch yet.</td></tr>';
+                 updateActionButtonsState(); // Update buttons state
+                 return;
+            }
+
+            const groupedInventory = {};
+            categories.forEach(cat => groupedInventory[cat] = []);
+            currentInventory.forEach(item => {
+                 if (groupedInventory[item.category]) {
+                    groupedInventory[item.category].push(item);
+                }
+            });
+
+            categories.forEach(category => {
+                const itemsInCategory = groupedInventory[category];
+                if (itemsInCategory.length > 0) {
+                    const headerRow = document.createElement('tr');
+                    headerRow.classList.add('category-header');
+                    headerRow.innerHTML = `<th colspan="4">${category}</th>`;
+                    inventoryTableBodyEl.appendChild(headerRow);
+
+                    itemsInCategory.forEach((item) => {
+                         const originalIndex = inventories[selectedBranch].findIndex(invItem => invItem.flavor === item.flavor && invItem.category === item.category);
+                         const row = document.createElement('tr');
+
+                        const currentQtyForCalc = item.currentQuantity ?? 0;
+                        const maxQtyForCalc = item.maxQuantity ?? 0;
+                        const needStock = maxQtyForCalc - currentQtyForCalc;
+                        let needStockDisplay = '-';
+                        let needStockColor = 'text-gray-500';
+
+                        if (item.maxQuantity !== null) {
+                             needStockDisplay = needStock > 0 ? needStock : 0;
+                             needStockColor = needStock > 0 ? 'text-orange-600' : 'text-green-600';
+                              if (item.currentQuantity === null) {
+                                 needStockDisplay = maxQtyForCalc;
+                                 needStockColor = 'text-orange-600';
+                             }
+                        }
+
+                        // Row HTML structure remains the same
+                        row.innerHTML = `
+                            <td class="text-left pl-4 font-medium text-gray-800">${item.flavor}</td>
+                            <td>
+                                <input type="number" min="0" value="${item.currentQuantity ?? ''}" data-index="${originalIndex}" data-type="current" class="qty-input">
+                            </td>
+                            <td class="font-semibold ${needStockColor}">
+                                <span class="need-stock-qty">${needStockDisplay}</span>
+                            </td>
+                            <td class="pr-4">
+                                <input type="number" min="0" value="${item.maxQuantity ?? ''}" data-index="${originalIndex}" data-type="max" class="qty-input">
+                            </td>
+                        `;
+                        inventoryTableBodyEl.appendChild(row);
+                    });
+                }
+            });
+
+            // Event listeners handled by delegation
+            updateActionButtonsState(); // Update buttons state
+        }
+
+
+        // --- Event Handlers ---
+        function handleBranchChange(event) {
+            selectedBranch = event.target.value;
+             if (!selectedBranch) {
+                 inventoryTitle.textContent = 'Inventory: Select a branch';
+                 inventoryTableBodyEl.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 py-6">Please select a branch to view inventory.</td></tr>';
+                 toggleMaxQtyBtn.disabled = true;
+            } else {
+                 renderInventoryTable();
+            }
+            updateActionButtonsState(); // Update buttons state
+            console.log("Selected Branch:", selectedBranch);
+        }
+
+        function handleAddBranch() {
+            const branchName = newBranchNameInput.value.trim();
+            if (addBranch(branchName)) {
+                newBranchNameInput.value = '';
+            }
+        }
+
+        function handleQuantityChange(event) {
+            const input = event.target;
+            if (!input.classList.contains('qty-input')) return;
+
+            const originalIndex = parseInt(input.dataset.index);
+            const type = input.dataset.type;
+
+             if (isNaN(originalIndex) || originalIndex < 0 || originalIndex >= inventories[selectedBranch]?.length) {
+                 console.error("Invalid index:", originalIndex); return;
+             }
+
+            const rawValue = input.value.trim();
+            let value = null;
+            if (rawValue !== '') {
+                const parsed = parseInt(rawValue);
+                 if (!isNaN(parsed) && parsed >= 0) { value = parsed; }
+                 else if (!isNaN(parsed) && parsed < 0) {
+                     value = 0; input.value = '0'; showNotification("Quantity cannot be negative.", true);
+                 } else {
+                     const item = inventories[selectedBranch][originalIndex];
+                     input.value = (type === 'current' ? item.currentQuantity : item.maxQuantity) ?? '';
+                     showNotification("Please enter a valid number.", true); return;
+                 }
+            }
+
+            if (selectedBranch && inventories[selectedBranch] && inventories[selectedBranch][originalIndex]) {
+                 const itemToUpdate = inventories[selectedBranch][originalIndex];
+
+                if (type === 'current') { itemToUpdate.currentQuantity = value; }
+                else if (type === 'max') { itemToUpdate.maxQuantity = value; }
+
+                // Update "Need Stock" display
+                const row = input.closest('tr');
+                if (row) {
+                    const needStockCell = row.querySelector('td:nth-child(3) .need-stock-qty');
+                    if (needStockCell) {
+                        const currentQtyForCalc = itemToUpdate.currentQuantity ?? 0;
+                        const maxQtyForCalc = itemToUpdate.maxQuantity ?? 0;
+                        const needStock = maxQtyForCalc - currentQtyForCalc;
+                        let needStockDisplay = '-';
+                        let needStockColor = 'text-gray-500';
+
+                        if (itemToUpdate.maxQuantity !== null) {
+                             needStockDisplay = needStock > 0 ? needStock : 0;
+                             needStockColor = needStock > 0 ? 'text-orange-600' : 'text-green-600';
+                              if (itemToUpdate.currentQuantity === null) {
+                                 needStockDisplay = maxQtyForCalc;
+                                 needStockColor = 'text-orange-600';
+                             }
+                        }
+                        needStockCell.textContent = needStockDisplay;
+                        needStockCell.closest('td').className = `font-semibold ${needStockColor}`;
+                    }
+                }
+                saveData();
+                 updateActionButtonsState(); // Update buttons in case need stock changes
+            } else {
+                 console.error("Could not find item to update:", originalIndex);
+            }
+        }
+
+        function handleEnterNavigation(event) {
+            if (event.key === 'Enter' && event.target.tagName === 'INPUT' && event.target.classList.contains('qty-input')) {
+                event.preventDefault();
+                const inputs = Array.from(inventoryTableBodyEl.querySelectorAll('.qty-input')).filter(inp => {
+                     const parentTd = inp.closest('td');
+                     return parentTd && parentTd.offsetParent !== null;
+                });
+                const currentIndex = inputs.indexOf(event.target);
+                const nextIndex = currentIndex + 1;
+                if (nextIndex < inputs.length) {
+                    inputs[nextIndex].focus();
+                    inputs[nextIndex].select();
+                } else {
+                     event.target.blur();
+                }
+            }
+        }
+
+        function handleToggleMaxQty() {
+            updateMaxQtyVisibility(!isMaxQtyVisible); // Toggle state
+        }
+
+        // --- WhatsApp Share Handler ---
+        function handleWhatsAppShare() {
+             if (!selectedBranch || !inventories[selectedBranch]) {
+                 showNotification("Please select a branch first.", true);
+                 return;
+             }
+
+             const inventory = inventories[selectedBranch];
+             // Use bold formatting for WhatsApp (*...*) and newlines (\n)
+             let message = `*Stock Needed for ${selectedBranch}:*\n\n`; // Add extra newline
+             let itemsNeeded = 0;
+
+             // Iterate through categories first for grouped message
+             categories.forEach(category => {
+                 let categoryMessage = '';
+                 let itemsInCategoryNeeded = 0;
+
+                 inventory.forEach(item => {
+                     if (item.category === category) {
+                         const maxQty = item.maxQuantity;
+                         if (maxQty !== null && maxQty > 0) {
+                             const currentQty = item.currentQuantity ?? 0;
+                             const needStock = maxQty - currentQty;
+                             if (needStock > 0) {
+                                 // Add item: - Flavor: Need X
+                                 categoryMessage += `- ${item.flavor}: Need ${needStock}\n`;
+                                 itemsInCategoryNeeded++;
+                             }
+                         }
+                     }
+                 });
+
+                 // Add category to message only if items are needed in it
+                 if (itemsInCategoryNeeded > 0) {
+                     // Add category header (maybe without bold)
+                     message += `_${category}_\n`; // Use underscores for italics
+                     message += categoryMessage;
+                     message += '\n'; // Add newline after category
+                     itemsNeeded += itemsInCategoryNeeded;
+                 }
+             });
+
+
+             if (itemsNeeded === 0) {
+                 showNotification(`No stock needed for ${selectedBranch}.`);
+                 return;
+             }
+
+             // Encode message for URL
+             const encodedMessage = encodeURIComponent(message);
+             const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+
+             // Open WhatsApp link
+             console.log("Opening WhatsApp URL:", whatsappUrl); // Log URL for debugging
+             // Use window.location.href on mobile? Sometimes works better than _blank
+             // For simplicity, stick with window.open first
+             const newWindow = window.open(whatsappUrl, '_blank');
+
+             // Check if the window was blocked
+             if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+                 // Notify user about pop-up blocker
+                 showNotification("Could not open WhatsApp. Please disable your pop-up blocker.", true);
+             }
+        }
+
+
+        function showConfirmationModal() {
+            if (!selectedBranch) return;
+            // Updated confirmation message text to English
+            modalMessage.textContent = `Are you sure you want to clear the Available Stock for the "${selectedBranch}" branch? This cannot be undone.`;
+            confirmationModal.style.display = 'flex';
+        }
+
+        function hideConfirmationModal() {
+            confirmationModal.style.display = 'none';
+        }
+
+        function handleConfirmClear() {
+            if (selectedBranch && inventories[selectedBranch]) {
+                inventories[selectedBranch].forEach(item => {
+                    item.currentQuantity = null; // Clear Available Stock
+                });
+                saveData();
+                renderInventoryTable();
+                hideConfirmationModal();
+                 // Updated notification text to English
+                showNotification(`Available Stock cleared for "${selectedBranch}".`);
+            } else {
+                 showNotification(`Could not clear data for "${selectedBranch}".`, true);
+            }
+        }
+
+        // Updated function to handle both buttons
+         function updateActionButtonsState() {
+             const isDisabled = !selectedBranch || !inventories[selectedBranch] || inventories[selectedBranch].length === 0;
+             clearDataBtn.disabled = isDisabled;
+             // Initially disable share button based on branch/inventory existence
+             shareWhatsAppBtn.disabled = isDisabled;
+
+             // Further check if any stock is actually needed
+             if (!isDisabled) {
+                 let needsStock = false;
+                 inventories[selectedBranch].forEach(item => {
+                     const maxQty = item.maxQuantity;
+                     if (maxQty !== null && maxQty > 0) { // Check if max is set
+                         const currentQty = item.currentQuantity ?? 0;
+                         if (maxQty - currentQty > 0) { // Check if need is positive
+                             needsStock = true;
+                         }
+                     }
+                 });
+                 // Only enable if stock is needed
+                 shareWhatsAppBtn.disabled = !needsStock;
+             }
+         }
+
+
+        // --- Core Logic Functions ---
+        function addBranch(branchName, shouldSave = true) {
+            branchName = branchName.trim();
+            if (!branchName) {
+                 // Updated notification text to English
+                showNotification("Branch name cannot be empty!", true); return false;
+            }
+            if (branches.includes(branchName)) {
+                 // Updated notification text to English
+                showNotification(`Branch "${branchName}" already exists!`, true); return false;
+            }
+            branches.push(branchName);
+            inventories[branchName] = [];
+            categories.forEach(category => {
+                categorizedFlavors[category].forEach(flavor => {
+                    inventories[branchName].push({
+                        flavor: flavor, category: category,
+                        currentQuantity: null, maxQuantity: null
+                    });
+                });
+            });
+            selectedBranch = branchName;
+            if (shouldSave) saveData();
+            renderBranchDropdown();
+            renderInventoryTable();
+            updateActionButtonsState(); // Update buttons state
+             // Updated notification text to English
+            showNotification(`Branch "${branchName}" added successfully.`);
+            return true;
+        }
+
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData(); // Load data and visibility state
+
+            // Attach Event Listeners
+            inventoryTableBodyEl.addEventListener('change', handleQuantityChange);
+            inventoryTableBodyEl.addEventListener('input', handleQuantityChange); // Keep for immediate feedback if needed
+            inventoryTableBodyEl.addEventListener('keydown', handleEnterNavigation);
+
+            branchSelect.addEventListener('change', handleBranchChange);
+            addBranchBtn.addEventListener('click', handleAddBranch);
+            newBranchNameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAddBranch(); });
+            clearDataBtn.addEventListener('click', showConfirmationModal);
+            toggleMaxQtyBtn.addEventListener('click', handleToggleMaxQty);
+            shareWhatsAppBtn.addEventListener('click', handleWhatsAppShare); // WhatsApp button listener
+            cancelBtn.addEventListener('click', hideConfirmationModal);
+            confirmBtn.addEventListener('click', handleConfirmClear);
+
+            confirmationModal.addEventListener('click', (event) => { if (event.target === confirmationModal) hideConfirmationModal(); });
+        });
+
+    </script>
+
+</body>
+</html>
